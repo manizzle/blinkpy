@@ -84,6 +84,9 @@ class BlinkURLHandler(object):
         self.event_url = self.base_url + '/events/network/'
         self.network_url = self.base_url + '/network/'
         self.networks_url = self.base_url + '/networks'
+        self.video_count = self.base_url + '/api/v2/videos/count'
+        self.network_2_url = self.base_url + '/api/v2/network/'
+
 
 
 class BlinkCamera(object):
@@ -104,6 +107,7 @@ class BlinkCamera(object):
         self.motion = {}
         self.header = None
         self.image_link = None
+        self.stream_link = None
         self.arm_link = None
         self.region_id = config['region_id']
 
@@ -125,6 +129,10 @@ class BlinkCamera(object):
     def snap_picture(self):
         """Take a picture with camera to create a new thumbnail."""
         _request(self.blink, url=self.image_link,
+                 headers=self.header, reqtype='post')
+
+    def get_stream(self):
+        return _request(self.blink, url=self.stream_link,
                  headers=self.header, reqtype='post')
 
     def set_motion_detect(self, enable):
@@ -187,9 +195,17 @@ class Blink(object):
         self.region_id = None
         self._host = None
         self._events = []
+        self._count = None
         self.cameras = CaseInsensitiveDict({})
         self._idlookup = {}
         self.urls = None
+
+    @property
+    def video_count(self):
+        """Return count of videos"""
+        self._count = _request(self, self.urls.video_count, headers=self._auth_header,
+                               reqtype='get')
+        return self._count
 
     @property
     def camera_thumbs(self):
@@ -295,9 +311,13 @@ class Blink(object):
         for name in self.cameras:
             camera = self.cameras[name]
             network_id_url = self.urls.network_url + self.network_id
+            network_id_v2_url = self.urls.network_2_url + self.network_id
             image_url = network_id_url + '/camera/' + camera.id + '/thumbnail'
+            video_url = network_id_url + '/camera/' + camera.id + '/clip'
             arm_url = network_id_url + '/camera/' + camera.id + '/'
+            stream_url = network_id_v2_url + '/camera/' + camera.id + '/liveview'
             camera.image_link = image_url
+            camera.stream_link = stream_url
             camera.arm_link = arm_url
             camera.header = self._auth_header
 
